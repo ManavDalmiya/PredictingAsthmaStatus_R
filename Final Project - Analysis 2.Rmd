@@ -1,0 +1,117 @@
+---
+title: "Final Project - Analysis"
+author: "Manav Dalmiya"
+date: "12/6/2015"
+output: html_document
+---
+```{r}
+AsthmaData = read.csv("FinalProjectDataSet.csv")
+
+#Further Data Cleaning:
+AsthmaData$ASTHMA = ifelse(AsthmaData$ASTHMA %in% c(2, 7, 9), 0, AsthmaData$ASTHMA)
+AsthmaData$OVERWEIGHT = ifelse(AsthmaData$OVERWEIGHT %in% c(2, 7, 9), 0, AsthmaData$OVERWEIGHT)
+AsthmaData$FAMILY = ifelse(AsthmaData$FAMILY %in% c(2, 7, 9), 0, AsthmaData$FAMILY)
+
+#Summary Statistics
+summary(AsthmaData)
+sd(AsthmaData$ASTHMA)
+sd(AsthmaData$FEMALE)
+sd(AsthmaData$BADAIR)
+sd(AsthmaData$OVERWEIGHT)
+sd(AsthmaData$FAMILY)
+sd(AsthmaData$YRSSMKD)
+sd(AsthmaData$DUST)
+sd(AsthmaData$AGE)
+sd(AsthmaData$ACTIVE)
+summary(AsthmaData$ACTIVE)
+
+#Who has asthma
+with(AsthmaData, table(AsthmaData$ASTHMA))
+AsthmaOdds = (862/6307)/(1-862/6307)
+AsthmaOdds
+
+#Who has asthma based on predictor factors.
+with(AsthmaData, table(AsthmaData$FEMALE))
+with(AsthmaData, table(AsthmaData$BADAIR))
+with(AsthmaData, table(AsthmaData$OVERWEIGHT))
+with(AsthmaData, table(AsthmaData$FAMILY))
+#with(AsthmaData, table(AsthmaData$YRSSMKD))
+#with(AsthmaData, table(AsthmaData$DUST))
+
+#Exploratory Histograms, Bar Plots:
+hist(AsthmaData$ASTHMA)
+hist(AsthmaData$FEMALE)
+hist(AsthmaData$BADAIR)
+hist(AsthmaData$OVERWEIGHT)
+hist(AsthmaData$FAMILY)
+hist(AsthmaData$YRSMKD)
+hist(AsthmaData$DUST)
+hist(AsthmaData$AGE)
+hist(AsthmaData$ACTIVE)
+
+#Exploratory Plots on Individual Variables:
+hist(AsthmaData$ACTIVE, prob=TRUE)
+curve(dnorm(x, mean=mean(AsthmaData$ACTIVE), sd=sd(AsthmaData$ACTIVE)), add=TRUE)
+
+#
+````
+
+```{r}
+#Logistic Regression of Asthma on All Variables
+
+#Logisitic Regression on Controls
+REG1 = glm(ASTHMA ~ FEMALE + OVERWEIGHT + FAMILY, data=AsthmaData)
+
+#Install Package to Use Concordance Index Package
+#install.packages("rms")
+library(rms)
+
+#Wald Test on Coefficients
+summary(REG1)
+#Controls: Predicted values
+Pred1 = predict(REG1, type="resp")
+#Controls: Concordance Index
+rcorr.cens(Pred1, AsthmaData$ASTHMA)
+
+#Logistic Regression on Full Model (Controls & Behavioral and Environmental Factors)
+REG2 = glm(ASTHMA ~ FEMALE + BADAIR + OVERWEIGHT + AGE + FAMILY + ACTIVE + YRSSMKD + DUST, data=AsthmaData)
+#Wald Test on Coefficients
+summary(REG2)
+#Controls: Predicted values
+Pred2 = predict(REG2, type="resp")
+#Controls: Concordance Index
+rcorr.cens(Pred2, AsthmaData$ASTHMA)
+#Likelihood Ratio Test
+anova(REG1,REG2,test="Chisq")
+
+#Logistric Regression on Statistically Significant Model
+REG3 = glm(ASTHMA ~ BADAIR + OVERWEIGHT + FAMILY + ACTIVE, data=AsthmaData)
+#Wald Test on Coefficients
+summary(REG3)
+#Controls: Predicted values
+Pred3 = predict(REG3, type="resp")
+#Controls: Concordance Index
+rcorr.cens(Pred3, AsthmaData$ASTHMA)
+#Likelihood Ratio Test
+anova(REG1,REG3,test="Chisq")
+```
+
+```{r}
+#Residuals Command
+#resid.slr = resid(speed.slr)
+
+#plot(resid.slr, main = "Residuals Plot for Fatality by Year SLR", xlab = "Year Number", ylab = "Residuals")
+
+#Bar Plot of Asthma by Effect by Bad Quality (Yes/No)
+AsthmaBadAir = with(AsthmaData, table(AsthmaData$ASTHMA, AsthmaData$BADAIR))
+AsthmaBadAir
+barplot(AsthmaBadAir)
+rownames(AsthmaBadAir) = c("No Asthma", "Asthma")
+colnames(AsthmaBadAir) = c("No Bad Air Effect", "Bad Air Effect")
+prop.table(AsthmaBadAir)
+barplot(prop.table(AsthmaBadAir, margin=2))
+
+barplot(prop.table(AsthmaBadAir, margin = 2), beside = T, ylim =c(0,1), ylab = "Proportion of Asthma", main = "Asthma by Effected by Bad Air Quality (Yes vs. No)", legend.text = rownames(AsthmaBadAir))
+
+```
+

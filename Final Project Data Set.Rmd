@@ -1,0 +1,108 @@
+---
+title: "Final Project Data Set"
+author: "Manav Dalmiya"
+date: "11/16/2015"
+output: html_document
+---
+4. Read Data Files into R
+```{r}
+#install.packages("foreign")    
+library(foreign)   
+AirQuality = read.xport("~/Data Sets/Final Project - Data Sets/Air Quality 07-08.xpt")
+Demographics = read.xport("~/Data Sets/Final Project - Data Sets/Demographics 07-08.xpt")
+Income = read.xport("~/Data Sets/Final Project - Data Sets/Income 07-08.xpt")
+MedCondition = read.xport("~/Data Sets/Final Project - Data Sets/Medical Conditions 07-08.xpt")
+Occupation = read.xport("~/Data Sets/Final Project - Data Sets/Occupation 07-08.xpt")
+PhysActivity = read.xport("~/Data Sets/Final Project - Data Sets/Physical Activity 07-08.xpt")
+RespHealth = read.xport("~/Data Sets/Final Project - Data Sets/Respiratory Health 07-08.xpt")
+Smoking.Cig = read.xport("~/Data Sets/Final Project - Data Sets/Smoking (Cig Use) 07-08.xpt")
+Smoking.House = read.xport("~/Data Sets/Final Project - Data Sets/Smoking (Household) 07-08.xpt")
+Smoking.Rec = read.xport("~/Data Sets/Final Project - Data Sets/Smoking (Recent Use) 07-08.xpt")
+```
+
+5. Merge multiple dataframes
+```{r}
+all1 = merge(AirQuality, Demographics, by = "SEQN")
+all2 = merge(all1, Income, by = "SEQN")
+all3 = merge(all2, MedCondition, by = "SEQN")
+all4 = merge(all3, Occupation, by = "SEQN")
+all5 = merge(all4, PhysActivity, by = "SEQN")
+all6 = merge(all5, RespHealth, by = "SEQN")
+all7 = merge(all6, Smoking.Cig, by = "SEQN")
+all8 = merge(all7, Smoking.House, by = "SEQN")
+all9 = merge(all8, Smoking.Rec, by = "SEQN")
+```
+
+Recoding Variables
+```{r}
+#Sex Variable Recode
+all9$FEMALE = all9$RIAGENDR-1 
+
+#Age First Diagnosed with Asthma Variable Recode
+all9$AGE = all9$MCQ025
+
+#Income Recode
+all9$INCOME = all9$IND235
+
+#Bad Air Quality Variable Recode
+all9$BADAIR = ifelse(all9$PAQ685 %in% c(2,3), 0, all9$PAQ685)
+
+#Asthma Status Variable Recode
+all9$ASTHMA = ifelse(all9$MCQ010 %in% c(2), 0, all9$MCQ010)
+
+#Overweight Status Variable Recode
+all9$OVERWEIGHT = ifelse(all9$MCQ080 %in% c(2), 0, all9$MCQ080)
+
+#Family History Asthma
+all9$FAMILY = ifelse(all9$MCQ300B %in% c(2), 0, all9$MCQ300B)
+
+#Industrial Dust Status Variable
+all9$OCQ510 = ifelse(all9$OCQ510 %in% c(2, 7, 9), 0, all9$OCQ510)
+all9$OCQ530 = ifelse(all9$OCQ530 %in% c(2, 7, 9), 0, all9$OCQ530)
+all9$OCQ550 = ifelse(all9$OCQ550 %in% c(2, 7, 9), 0, all9$OCQ550)
+all9$OCQ570 = ifelse(all9$OCQ570 %in% c(2, 7, 9), 0, all9$OCQ570)
+all9$DUST = subset(all9, select = c("OCQ510", "OCQ530", "OCQ550", "OCQ570"))
+str(all9$DUST) 
+if(all9$OCQ510 == 1 | all9$OCQ530 == 1 | all9$OCQ550 == 1 | all9$OCQ570 == 1) {all9$DUST = 1} #Not working
+all9$DUST
+
+
+#ifelse(all9$DUST %in% c(0), 0, all9$DUST)
+
+#Hours Activity in a Day Variable Recode
+all9$PAD615[is.na(all9$PAD615)] <- 0
+all9$PAD630[is.na(all9$PAD630)] <- 0
+all9$PAD645[is.na(all9$PAD645)] <- 0
+all9$PAD660[is.na(all9$PAD660)] <- 0
+all9$PAD675[is.na(all9$PAD675)] <- 0
+str(all9$PAD615) #Test if na values are returning as 0 -> It's working
+all9$ACTIVE = ((all9$PAD615 + all9$PAD630 + all9$PAD645 + all9$PAD660 + all9$PAD675)/60) 
+all9$ACTIVE
+
+#Years Smoked Variable Recode
+all9$SMD030 = ifelse(all9$SMD030 %in% c(777, 999), 0, all9$SMD030) #assuming all refused and don't knows are 0 (i.e. have never smoked)
+all9$SMD030 = ifelse(all9$SMD055 %in% c(777, 999), 0, all9$SMD055) #assuming all refused and don't knows are 0 (i.e. have never smoked)
+all9$SMD030[is.na(all9$SMD030)] <- 0
+all9$SMD055[is.na(all9$SMD055)] <- 0
+all9$SMD055
+all9$SMD030
+all9$YRSSMKD = all9$SMD055 - all9$SMD030 #subtracting age quit smoking from age started smoking
+all9$YRSSMKD
+
+#Second Hand Smoking Variable
+all9$OCQ290Q[is.na(all9$OCQ290Q)] <- 0
+all9$OCQ290Q = ifelse(all9$OCQ290Q %in% c(0:24), 1, all9$OCQ290Q)
+all9$SMD410[is.na(all9$SMD410)] <- 0
+all9$SMD410 = ifelse(all9$SMD410 %in% c(2), 0, all9$SMD410)
+all9$SCNDSMKD = if(all9$SMD410 == 1 | all9$OCQ290Q == 1) {all9$SCNDSMKD = 1} #Not working
+all9$SCNDSMKD
+```
+
+Final Dataset 
+```{r}
+all = subset(all9, select = c("SEQN", "FEMALE", "AGE", "BADAIR", "INCOME", "ASTHMA", "OVERWEIGHT", "FAMILY", "DUST", "ACTIVE", "YRSSMKD", "SCNDSMKD"))
+
+##all.comp = all[complete.cases(all),]
+write.csv(all, file = "FinalProjectDataSet.csv") 
+```
+
